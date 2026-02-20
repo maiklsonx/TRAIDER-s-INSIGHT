@@ -1,22 +1,28 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trade, TradeType } from '../types';
 import { CURRENCIES, EMOTIONS_LIST } from '../constants';
 
 interface TradeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Fix: Omit 'userId' from the trade object as it is provided by the App component during saving
   onSave: (trade: Omit<Trade, 'id' | 'userId'>) => void;
   selectedDate: string;
+  defaultCurrency: string;
 }
 
-const TradeModal: React.FC<TradeModalProps> = ({ isOpen, onClose, onSave, selectedDate }) => {
+const TradeModal: React.FC<TradeModalProps> = ({ isOpen, onClose, onSave, selectedDate, defaultCurrency }) => {
   const [type, setType] = useState<TradeType>(TradeType.PROFIT);
   const [amount, setAmount] = useState<string>('');
-  const [currency, setCurrency] = useState<string>(CURRENCIES[0]);
+  const [currency, setCurrency] = useState<string>(defaultCurrency || CURRENCIES[0]);
   const [emotions, setEmotions] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrency(defaultCurrency || CURRENCIES[0]);
+    }
+  }, [isOpen, defaultCurrency]);
 
   if (!isOpen) return null;
 

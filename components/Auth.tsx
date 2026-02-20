@@ -12,9 +12,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [currency, setCurrency] = useState(CURRENCIES[0]);
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [error, setError] = useState('');
 
   const validateUsername = (val: string) => /^[a-zA-Z0-9_]+$/.test(val);
+  const toDateInputValue = (value?: string) => {
+    if (!value) return new Date().toISOString().split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date().toISOString().split('T')[0] : parsed.toISOString().split('T')[0];
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +49,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           return;
         }
         
-        const newUser: User = { username: cleanUsername, password, currency };
+        const newUser: User = { username: cleanUsername, password, currency, startDate: toDateInputValue(startDate) };
         const updatedUsers = [...savedUsers, newUser];
         localStorage.setItem(storageKey, JSON.stringify(updatedUsers));
         console.log('User registered and saved to local storage:', cleanUsername);
@@ -50,7 +57,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       } else {
         const user = savedUsers.find(u => u.username === cleanUsername && u.password === password);
         if (user) {
-          onLogin(user);
+          onLogin({ ...user, startDate: toDateInputValue(user.startDate) });
         } else {
           setError('Неверное имя пользователя или пароль. Убедитесь, что вы зарегистрированы.');
         }
@@ -124,16 +131,29 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           </div>
 
           {isRegistering && (
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Основная валюта</label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none cursor-pointer"
-              >
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Основная валюта</label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium appearance-none cursor-pointer"
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Стартовая дата дневника</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                  required
+                />
+              </div>
+            </>
           )}
 
           <button
