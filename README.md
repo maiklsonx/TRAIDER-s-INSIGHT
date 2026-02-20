@@ -2,19 +2,48 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Trader's Insight — запуск и предпросмотр
 
-This contains everything you need to run your app locally.
+## Быстрый старт
 
-View your app in AI Studio: https://ai.studio/apps/drive/1krQvM9lGCiaj9SOr-kMjnVynOgVWAXIV
+1. Установи зависимости:
+   ```bash
+   npm install
+   ```
+2. Запусти dev-сервер:
+   ```bash
+   npm run dev -- --host 0.0.0.0 --port 4173
+   ```
+3. Открой в браузере:
+   `http://localhost:4173`
 
-## Run Locally
+## Как запустить **предварительный просмотр** (preview)
 
-**Prerequisites:**  Node.js
+`preview` работает только после сборки:
 
+```bash
+npm run build
+npm run preview -- --host 0.0.0.0 --port 4173
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Открыть: `http://localhost:4173`
+
+## Почему может быть белый экран
+
+Частые причины:
+
+1. Запущен `npm run preview` **без** `npm run build`.
+2. Открыт не тот адрес/порт.
+3. В localStorage остались старые/битые данные.
+
+Что сделать:
+
+1. Остановить сервер.
+2. Выполнить:
+   ```bash
+   npm run build
+   npm run preview -- --host 0.0.0.0 --port 4173
+   ```
+3. Если не помогло — очистить localStorage для сайта и перезагрузить страницу.
+
+В приложении также добавлен Error Boundary: вместо полностью белого экрана теперь показывается понятный экран ошибки с кнопкой сброса сессии.

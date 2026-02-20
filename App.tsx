@@ -6,6 +6,21 @@ import TradeModal from './components/TradeModal';
 import Auth from './components/Auth';
 
 const App: React.FC = () => {
+  const normalizeDateInput = (value?: string) => {
+    if (!value) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const parsed = new Date(`${value}T00:00:00`);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(value)) {
+      const [day, month, yearValue] = value.split('.').map(Number);
+      const parsed = new Date(yearValue, month - 1, day);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem('trader_diary_current_user');
@@ -20,6 +35,14 @@ const App: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser?.startDate) return;
+    const preferredDate = normalizeDateInput(currentUser.startDate);
+    if (preferredDate) {
+      setCurrentDate(preferredDate);
+    }
+  }, [currentUser]);
 
   // Daily quote logic based on date hash
   const dailyQuote = useMemo(() => {
@@ -77,6 +100,7 @@ const App: React.FC = () => {
 
   const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const handleMonthPick = (monthIndex: number) => setCurrentDate(new Date(year, monthIndex, 1));
 
   const handleJumpToDate = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(e.target.value);
@@ -136,6 +160,20 @@ const App: React.FC = () => {
       count: monthTrades.length
     };
   }, [trades, month, year]);
+
+  const yearlyTotals = useMemo(() => {
+    return MONTHS_RU.map((_, monthIndex) => {
+      const monthTrades = trades.filter(t => {
+        const d = new Date(t.date);
+        return d.getFullYear() === year && d.getMonth() === monthIndex;
+      });
+
+      const monthProfit = monthTrades.reduce((acc, t) => t.type === TradeType.PROFIT ? acc + t.amount : acc, 0);
+      const monthLoss = monthTrades.reduce((acc, t) => t.type === TradeType.LOSS ? acc + t.amount : acc, 0);
+
+      return monthProfit - monthLoss;
+    });
+  }, [trades, year]);
 
   const handleDayClick = (date: Date) => {
     setSelectedDay(date.toISOString());
@@ -205,6 +243,14 @@ const App: React.FC = () => {
             </button>
           </div>
 
+          <input
+            type="date"
+            value={new Date(year, month, 1).toISOString().split('T')[0]}
+            onChange={handleJumpToDate}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title="Перейти к дате"
+          />
+
           <button 
             onClick={handleLogout}
             className="p-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-all border border-rose-100 flex items-center gap-2 group"
@@ -217,6 +263,27 @@ const App: React.FC = () => {
           </button>
         </div>
       </header>
+
+      <section className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3 mb-6">
+        {MONTHS_RU.map((monthName, monthIndex) => {
+          const total = yearlyTotals[monthIndex];
+          const isActive = monthIndex === month;
+          return (
+            <button
+              key={monthName}
+              onClick={() => handleMonthPick(monthIndex)}
+              className={`p-3 rounded-2xl border text-left transition-all ${
+                isActive ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-200'
+              }`}
+            >
+              <p className={`text-xs font-bold uppercase ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>{monthName}</p>
+              <p className={`text-lg font-black ${total >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {total > 0 ? '+' : ''}{total.toFixed(0)}{currentUser.currency}
+              </p>
+            </button>
+          );
+        })}
+      </section>
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
         <main className="flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col w-full">
@@ -333,6 +400,7 @@ const App: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleAddTrade}
         selectedDate={selectedDay || new Date().toISOString()}
+        defaultCurrency={currentUser.currency}
       />
     </div>
   );

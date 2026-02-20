@@ -27,6 +27,7 @@ export interface User {
   username: string;
   password: string;
   currency: string;
+  startDate: string;
 }
 
 export interface UserProfile {
