@@ -1,339 +1,197 @@
+import React, { useMemo, useState } from 'react';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Trade, TradeType, DayStats, User } from './types';
-import { MONTHS_RU, DAYS_RU, MOTIVATIONAL_QUOTES } from './constants';
-import TradeModal from './components/TradeModal';
-import Auth from './components/Auth';
+type Company = {
+  name: string;
+  ticker: string;
+  cap: string;
+  stock: string;
+  trend: string;
+  description: string;
+};
+
+const keyCompanies: Company[] = [
+  {
+    name: 'Mazel Inc Group',
+    ticker: 'MZIGR',
+    cap: '79.04T USD (group valuation)',
+    stock: '187,657 pts',
+    trend: '⬆️⬆️⬆️⬆️⬆️',
+    description: 'Глобальный конгломерат: fintech, banking, telecom, AI, health, education, logistics.',
+  },
+  {
+    name: 'FAST System',
+    ticker: 'FAST',
+    cap: '15T USD ecosystem value',
+    stock: '18,956 USD',
+    trend: '⬆️⬆️⬆️⬆️⬆️',
+    description: 'Instant cross-border settlement network for fiat, crypto and tokenized assets.',
+  },
+  {
+    name: 'Maze Bank',
+    ticker: 'MZBK',
+    cap: '20T USD',
+    stock: '41,499 USD',
+    trend: '⬆️⬆️⬆️⬆️',
+    description: 'Крупнейшая банковская сеть с глобальными хабами в Европе, Азии, Африке и Америке.',
+  },
+  {
+    name: 'Bank of Bennet',
+    ticker: 'BNKBNT',
+    cap: '2.6T USD',
+    stock: '26,937 USD',
+    trend: '⬆️⬆️⬆️⬆️',
+    description: 'Универсальный частный банк для граждан и бизнеса, включая программу BOB Aid.',
+  },
+  {
+    name: 'Mazel Infinity Corporation',
+    ticker: 'MZINF',
+    cap: '7.2T USD',
+    stock: '12,348 USD',
+    trend: '⬆️⬆️⬆️',
+    description: 'Hardware, chips, gadgets, transport and advanced manufacturing.',
+  },
+  {
+    name: 'Bennqx (ex-EMayBit)',
+    ticker: 'BNQX',
+    cap: '2.9T USD',
+    stock: '32,765 USD',
+    trend: '⬆️⬆️⬆️⬆️',
+    description: 'Криптобиржа и экосистема кошельков с прямой интеграцией по FAST ID.',
+  },
+];
+
+const boardMembers = [
+  { role: 'Founder & Group CEO', name: 'Daniel Bennet' },
+  { role: 'CEO, Maze Bank', name: 'Sofia Kravchenko' },
+  { role: 'CEO, Bank of Bennet', name: 'Ruby Matthews' },
+  { role: 'CEO, FAST System', name: 'Ares Cross' },
+  { role: 'CEO, Bennqx', name: 'Michael Stone' },
+  { role: 'Vice President', name: 'Matteo Balsano' },
+];
+
+const majorStats = [
+  ['Connected Countries', '200+'],
+  ['FAST Transfer Speed', '0.001 sec'],
+  ['Combined Banking Capitalization', '27.8T USD'],
+  ['Subscribers Reach', '3.6B+'],
+];
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('trader_diary_current_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      console.error('Failed to parse current user:', e);
-      return null;
-    }
-  });
+  const [showExchange, setShowExchange] = useState(false);
 
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Daily quote logic based on date hash
-  const dailyQuote = useMemo(() => {
-    const dateStr = new Date().toDateString();
-    let hash = 0;
-    for (let i = 0; i < dateStr.length; i++) {
-      hash = (hash << 5) - hash + dateStr.charCodeAt(i);
-      hash |= 0; 
-    }
-    const index = Math.abs(hash) % MOTIVATIONAL_QUOTES.length;
-    return MOTIVATIONAL_QUOTES[index];
+  const mexcChartPoints = useMemo(() => {
+    return [8, 14, 12, 22, 27, 31, 29, 38, 46, 54, 63, 78]
+      .map((v, i) => `${i * 64},${220 - v * 2.2}`)
+      .join(' ');
   }, []);
 
-  // Load trades for current user
-  useEffect(() => {
-    if (currentUser) {
-      try {
-        const rawTrades = localStorage.getItem('trader_diary_trades');
-        const savedTrades = rawTrades ? JSON.parse(rawTrades) : [];
-        const userTrades = savedTrades.filter((t: any) => t.userId === currentUser.username);
-        setTrades(userTrades);
-      } catch (e) {
-        console.error('Failed to load trades:', e);
-        setTrades([]);
-      }
-    }
-  }, [currentUser]);
-
-  // Save trades globally but tagged by user
-  const syncTradesToLocal = (updatedTrades: Trade[]) => {
-    if (!currentUser) return;
-    try {
-      const rawAll = localStorage.getItem('trader_diary_trades');
-      const allTrades = rawAll ? JSON.parse(rawAll) : [];
-      const otherTrades = allTrades.filter((t: any) => t.userId !== currentUser.username);
-      localStorage.setItem('trader_diary_trades', JSON.stringify([...otherTrades, ...updatedTrades]));
-    } catch (e) {
-      console.error('Failed to sync trades:', e);
-    }
-  };
-
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    localStorage.setItem('trader_diary_current_user', JSON.stringify(user));
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('trader_diary_current_user');
-    setTrades([]);
-  };
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-
-  const handleJumpToDate = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const date = new Date(e.target.value);
-    if (!isNaN(date.getTime())) {
-      setCurrentDate(date);
-    }
-  };
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-  const offset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-
-  const calendarDays = useMemo(() => {
-    const days: (Date | null)[] = [];
-    for (let i = 0; i < offset; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
-    return days;
-  }, [year, month, offset, daysInMonth]);
-
-  const statsByDate = useMemo(() => {
-    const stats: Record<string, DayStats> = {};
-    trades.forEach(trade => {
-      const dateKey = new Date(trade.date).toDateString();
-      if (!stats[dateKey]) {
-        stats[dateKey] = {
-          date: trade.date,
-          totalProfit: 0,
-          totalLoss: 0,
-          netResult: 0,
-          trades: []
-        };
-      }
-      stats[dateKey].trades.push(trade);
-      if (trade.type === TradeType.PROFIT) {
-        stats[dateKey].totalProfit += trade.amount;
-      } else {
-        stats[dateKey].totalLoss += trade.amount;
-      }
-      stats[dateKey].netResult = stats[dateKey].totalProfit - stats[dateKey].totalLoss;
-    });
-    return stats;
-  }, [trades]);
-
-  const monthlyStats = useMemo(() => {
-    const monthTrades = trades.filter(t => {
-      const d = new Date(t.date);
-      return d.getMonth() === month && d.getFullYear() === year;
-    });
-
-    const profit = monthTrades.reduce((acc, t) => t.type === TradeType.PROFIT ? acc + t.amount : acc, 0);
-    const loss = monthTrades.reduce((acc, t) => t.type === TradeType.LOSS ? acc + t.amount : acc, 0);
-
-    return {
-      profit,
-      loss,
-      total: profit - loss,
-      count: monthTrades.length
-    };
-  }, [trades, month, year]);
-
-  const handleDayClick = (date: Date) => {
-    setSelectedDay(date.toISOString());
-    setIsModalOpen(true);
-  };
-
-  const handleAddTrade = (newTrade: Omit<Trade, 'id' | 'userId'>) => {
-    if (!currentUser) return;
-    const trade: Trade = {
-      ...newTrade,
-      id: Math.random().toString(36).substr(2, 9),
-      userId: currentUser.username
-    };
-    const updated = [...trades, trade];
-    setTrades(updated);
-    syncTradesToLocal(updated);
-  };
-
-  if (!currentUser) {
-    return <Auth onLogin={handleLogin} />;
-  }
-
   return (
-    <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-[1600px] mx-auto text-slate-800">
-      {/* Header */}
-      <header className="flex flex-col lg:flex-row items-center justify-between bg-white p-6 rounded-2xl border border-slate-200 shadow-sm gap-6 mb-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 opacity-50 pointer-events-none"></div>
-        
-        <div className="flex items-center gap-4 z-10 w-full lg:w-auto">
-          <div className="bg-blue-600 p-3 rounded-xl shadow-lg">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">Trader's Insight</h1>
-            <p className="text-slate-500 text-sm flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              ID: <span className="font-bold text-blue-600">@{currentUser.username}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex-1 flex justify-center px-4 z-10">
-          <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 shadow-inner max-w-xl text-center">
-            <p className="text-slate-600 font-bold italic text-base md:text-lg leading-snug">
-              <span className="text-blue-500 mr-2 not-italic">⚡</span>
-              "{dailyQuote}"
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 z-10 w-full lg:w-auto justify-between lg:justify-end">
-          <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200 shadow-sm">
-            <button onClick={handlePrevMonth} className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 group">
-              <svg className="w-5 h-5 group-active:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div className="text-lg font-black min-w-[140px] text-center text-slate-700 uppercase tracking-tight">
-              {MONTHS_RU[month]} {year}
-            </div>
-            <button onClick={handleNextMonth} className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 group">
-              <svg className="w-5 h-5 group-active:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          <button 
-            onClick={handleLogout}
-            className="p-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-all border border-rose-100 flex items-center gap-2 group"
-            title="Выйти из терминала"
-          >
-            <svg className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span className="text-xs font-bold uppercase hidden sm:inline">Выход</span>
-          </button>
-        </div>
-      </header>
-
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
-        <main className="flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col w-full">
-          <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
-            {DAYS_RU.map(day => (
-              <div key={day} className="py-4 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">
-                {day}
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <section className="relative overflow-hidden border-b border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950">
+        <div className="absolute -top-32 -right-20 h-80 w-80 rounded-full bg-cyan-500/15 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="mx-auto max-w-7xl px-6 py-16 md:py-24">
+          <p className="mb-3 inline-flex items-center rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-1 text-xs uppercase tracking-wider text-cyan-200">
+            Global Conglomerate Profile · RU interface
+          </p>
+          <h1 className="text-3xl font-black leading-tight md:text-6xl">Mazel Inc Group & FAST Ecosystem</h1>
+          <p className="mt-4 max-w-3xl text-slate-300 md:text-lg">
+            Современный презентационный сайт о структурах Mazel Inc Group: дочерние компании, капитализация, акции,
+            руководство, инфраструктура FAST и демо-окно биржи MEXC с графиком.
+          </p>
+          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {majorStats.map(([label, value]) => (
+              <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-widest text-slate-400">{label}</p>
+                <p className="mt-1 text-xl font-bold text-cyan-300">{value}</p>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-7 flex-1">
-            {calendarDays.map((date, idx) => {
-              if (!date) return <div key={`empty-${idx}`} className="bg-slate-50/50 border-r border-b border-slate-100" />;
-              
-              const stats = statsByDate[date.toDateString()];
-              const isToday = new Date().toDateString() === date.toDateString();
-
-              return (
-                <button
-                  key={date.toISOString()}
-                  onClick={() => handleDayClick(date)}
-                  className={`group min-h-[100px] md:min-h-[140px] p-3 border-r border-b border-slate-100 hover:bg-blue-50/50 transition-all flex flex-col relative text-left ${
-                    isToday ? 'bg-blue-50/30' : ''
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-xl transition-all ${
-                      isToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 group-hover:text-blue-600'
-                    }`}>
-                      {date.getDate()}
-                    </span>
-                  </div>
-
-                  {stats && (
-                    <div className="flex flex-col gap-1.5 mt-auto">
-                      {stats.netResult !== 0 && (
-                        <div className={`text-sm md:text-base font-extrabold truncate ${
-                          stats.netResult > 0 ? 'text-emerald-500' : 'text-rose-500'
-                        }`}>
-                          {stats.netResult > 0 ? '+' : ''}{stats.netResult.toFixed(0)}{currentUser.currency}
-                        </div>
-                      )}
-                      <div className="flex gap-1 flex-wrap">
-                         {stats.trades.slice(0, 5).map(t => (
-                           <div 
-                             key={t.id} 
-                             className={`w-2 h-2 rounded-full border border-white shadow-sm ${t.type === TradeType.PROFIT ? 'bg-emerald-400' : 'bg-rose-400'}`}
-                           />
-                         ))}
-                         {stats.trades.length > 5 && <span className="text-[10px] font-bold text-slate-300">+{stats.trades.length - 5}</span>}
-                      </div>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </main>
-
-        <aside className="w-full lg:w-80 flex flex-col gap-6">
-          <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
-            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Статистика за месяц</h3>
-            <div className="space-y-4">
-              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col">
-                <p className="text-emerald-600 text-xs font-bold uppercase mb-1">Профит</p>
-                <p className="text-3xl font-black text-emerald-600">+{monthlyStats.profit.toLocaleString()}{currentUser.currency}</p>
+      <section className="mx-auto max-w-7xl px-6 py-12">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-extrabold">Ключевые компании и акции</h2>
+          <button
+            onClick={() => setShowExchange(true)}
+            className="rounded-xl border border-emerald-300/40 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/30"
+          >
+            Открыть окно MEXC Exchange
+          </button>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {keyCompanies.map((company) => (
+            <article key={company.ticker} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg shadow-black/20">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold">{company.name}</h3>
+                  <p className="text-xs uppercase tracking-widest text-slate-400">{company.ticker}</p>
+                </div>
+                <span className="rounded-lg bg-slate-800 px-2 py-1 text-xs">{company.trend}</span>
               </div>
-
-              <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 flex flex-col">
-                <p className="text-rose-600 text-xs font-bold uppercase mb-1">Убыток</p>
-                <p className="text-3xl font-black text-rose-600">-{monthlyStats.loss.toLocaleString()}{currentUser.currency}</p>
+              <p className="mt-3 text-sm text-slate-300">{company.description}</p>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-xl bg-slate-800/70 p-3">
+                  <p className="text-slate-400">Capitalization</p>
+                  <p className="font-semibold text-cyan-300">{company.cap}</p>
+                </div>
+                <div className="rounded-xl bg-slate-800/70 p-3">
+                  <p className="text-slate-400">Stock Price</p>
+                  <p className="font-semibold text-emerald-300">{company.stock}</p>
+                </div>
               </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
-              <div className={`p-5 rounded-2xl border-2 shadow-sm transition-all ${
-                monthlyStats.total >= 0 
-                  ? 'bg-blue-600 border-blue-500 text-white' 
-                  : 'bg-amber-500 border-amber-400 text-white'
-              }`}>
-                <p className="text-white/70 text-xs font-bold uppercase mb-1">Итоговый результат</p>
-                <p className="text-4xl font-black">
-                  {monthlyStats.total > 0 ? '+' : ''}{monthlyStats.total.toLocaleString()}{currentUser.currency}
-                </p>
+      <section className="mx-auto max-w-7xl px-6 pb-16">
+        <h2 className="mb-6 text-2xl font-extrabold">Совет руководителей</h2>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {boardMembers.map((m) => (
+            <article key={m.name} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div className="mb-4 flex h-44 items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-800/60">
+                <span className="text-sm text-slate-400">Photo Placeholder</span>
               </div>
+              <p className="text-xs uppercase tracking-widest text-slate-500">{m.role}</p>
+              <p className="mt-1 text-lg font-bold">{m.name}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {showExchange && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-900 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-black">MEXC · Mazel Market Window</h3>
+                <p className="text-sm text-slate-400">Демо-график индекса конгломерата (MZIGR)</p>
+              </div>
+              <button onClick={() => setShowExchange(false)} className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm hover:bg-slate-700">
+                Закрыть
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
+              <div className="mb-3 flex items-center justify-between text-sm text-slate-300">
+                <span>Pair: MZIGR / FASTTISI</span>
+                <span className="font-semibold text-emerald-300">+5.82% (24h)</span>
+              </div>
+              <svg viewBox="0 0 740 240" className="h-72 w-full rounded-lg bg-slate-900">
+                <defs>
+                  <linearGradient id="line" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#22d3ee" />
+                    <stop offset="100%" stopColor="#22c55e" />
+                  </linearGradient>
+                </defs>
+                <polyline fill="none" stroke="url(#line)" strokeWidth="4" points={mexcChartPoints} />
+              </svg>
             </div>
           </div>
-
-          <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
-            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Аналитика</h3>
-            <div className="space-y-4">
-               <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                 <span className="text-sm text-slate-500 font-medium">Сделок:</span>
-                 <span className="text-sm font-bold text-slate-700">{monthlyStats.count}</span>
-               </div>
-               <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                 <span className="text-sm text-slate-500 font-medium">Win Rate:</span>
-                 <span className={`text-sm font-bold ${monthlyStats.count > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
-                   {monthlyStats.count > 0 ? ((trades.filter(t => t.type === TradeType.PROFIT).length / trades.length) * 100).toFixed(1) : 0}%
-                 </span>
-               </div>
-            </div>
-            <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-               <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
-                 <span className="font-bold text-slate-500 block mb-1">Где мои данные?</span>
-                 Данные хранятся в LocalStorage твоего браузера. Они пропадут, если ты очистишь историю или зайдешь с другого устройства.
-               </p>
-            </div>
-          </div>
-        </aside>
-      </div>
-
-      <TradeModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleAddTrade}
-        selectedDate={selectedDay || new Date().toISOString()}
-      />
+        </div>
+      )}
     </div>
   );
 };
